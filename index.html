@@ -49,27 +49,29 @@
   <div id="player"></div>
 
   <script>
-    const YT_API_KEY = 'spf1bm41c0rm4jjfuk911alvqioborjp.apps.googleusercontent.com'; // Замените на ваш ключ!
-    let player;
+    const YT_API_KEY = 'AIzaSyCCOqb3-LZZSfzHESrMIBAZhmlY3MFVkmc'; // Замените на реальный ключ!
+    let searchTimer;
 
-    // 1. Загрузка YouTube IFrame API
+    // Загрузка YouTube IFrame API
     const tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
     document.head.appendChild(tag);
 
-    // 2. Инициализация плеера
+    // Инициализация плеера
     function onYouTubeIframeAPIReady() {
-      player = new YT.Player('player', {
+      window.player = new YT.Player('player', {
         height: '100%',
         width: '100%',
         events: {
-          'onReady': onPlayerReady
+          'onReady': () => console.log("Плеер готов!")
         }
       });
     }
 
-    // 3. Поиск видео
+    // Поиск видео
     async function searchVideos(query) {
+      if (!query) return;
+
       try {
         const response = await fetch(
           https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${YT_API_KEY}&type=video
@@ -77,44 +79,37 @@
         const data = await response.json();
         renderVideos(data.items);
       } catch (error) {
-        console.error('Ошибка поиска:', error);
+        console.error("Ошибка:", error);
       }
     }
 
-    // 4. Отображение результатов
+    // Отображение результатов
     function renderVideos(videos) {
       const container = document.querySelector('.video-list');
       container.innerHTML = videos.map(video => `
         <div class="video-item" data-id="${video.id.videoId}">
           <img src="${video.snippet.thumbnails.medium.url}" class="video-thumb">
           <div>
-            <h3 style="margin:0;font-size:16px">${video.snippet.title}</h3>
-            <p style="color:#666;margin-top:8px">${video.snippet.channelTitle}</p>
+            <h3>${video.snippet.title}</h3>
+            <p>${video.snippet.channelTitle}</p>
           </div>
         </div>
       `).join('');
 
-      // 5. Обработчик выбора видео
+      // Обработчик выбора видео
       document.querySelectorAll('.video-item').forEach(item => {
         item.addEventListener('click', () => {
           const videoId = item.dataset.id;
-          player.loadVideoById(videoId);
-          player.playVideo();
+          window.player.loadVideoById(videoId);
         });
       });
     }
 
-    // 6. Поиск с задержкой
-    let searchTimer;
+    // Обработчик ввода
     document.querySelector('.search-box').addEventListener('input', (e) => {
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => searchVideos(e.target.value), 500);
     });
-
-    // 7. Автовоспроизведение при готовности
-    function onPlayerReady(event) {
-      event.target.playVideo();
-    }
   </script>
 </body>
 </html>
