@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Mini App</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+    .search-box { width: 100%; padding: 12px; font-size: 16px; margin-bottom: 20px; }
+    .video-list { display: grid; gap: 15px; }
+    .video-item { display: flex; gap: 15px; cursor: pointer; padding: 10px; border: 1px solid #ddd; }
+    .video-thumb { width: 240px; height: 135px; object-fit: cover; }
+    .player { width: 100%; height: 450px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <input type="text" class="search-box" placeholder="Поиск видео на YouTube...">
+  <div class="video-list"></div>
+  <div class="player" id="player"></div>
+
+  <script>
+    const API_URL = 'https://ВАШ_ПРОЕКТ.vercel.app';
+    const searchBox = document.querySelector('.search-box');
+    const videoList = document.querySelector('.video-list');
+    let searchTimer;
+
+    // Поиск с задержкой 500 мс
+    searchBox.addEventListener('input', (e) => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => searchVideos(e.target.value), 500);
+    });
+
+    // Запрос к YouTube API
+    async function searchVideos(query) {
+      if (!query) {
+        videoList.innerHTML = '';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/search?q=${encodeURIComponent(query)}`);
+        const videos = await response.json();
+        renderVideos(videos);
+      } catch (error) {
+        console.error('Ошибка поиска:', error);
+      }
+    }
+
+    // Отображение результатов
+    function renderVideos(videos) {
+      videoList.innerHTML = videos.map(video => `
+        <div class="video-item" data-id="${video.id.videoId}">
+          <img src="${video.snippet.thumbnails.medium.url}" class="video-thumb">
+          <div>
+            <h3>${video.snippet.title}</h3>
+            <p>${video.snippet.channelTitle}</p>
+          </div>
+        </div>
+      `).join('');
+
+      // Обработчик выбора видео
+      document.querySelectorAll('.video-item').forEach(item => {
+        item.addEventListener('click', () => playVideo(item.dataset.id));
+      });
+    }
+
+    // Воспроизведение видео
+    function playVideo(videoId) {
+      const videoUrl = `${API_URL}/proxy?videoId=${videoId}`;
+      document.getElementById('player').innerHTML = `
+        <video controls class="player">
+          <source src="${videoUrl}" type="video/mp4">
+        </video>
+      `;
+    }
+  </script>
+</body>
+</html>
