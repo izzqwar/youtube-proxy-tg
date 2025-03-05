@@ -28,6 +28,16 @@ body {
     position: relative;
 }
 
+.search-box::after {
+    content: '⚲';
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #606060;
+    font-size: 18px;
+}
+
 #searchInput {
     width: 100%;
     padding: 12px 45px 12px 20px;
