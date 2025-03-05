@@ -24,28 +24,38 @@ body {
 }
 
 .search-box {
-    flex-grow: 1;
     position: relative;
-}
-
-.search-box::after {
-    content: '⚲';
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #606060;
-    font-size: 18px;
+    display: flex;
+    gap: 10px;
+    width: 100%;
 }
 
 #searchInput {
-    width: 100%;
-    padding: 12px 45px 12px 20px;
+    flex: 1;
+    padding: 12px 20px;
     border: 1px solid #e5e5e5;
     border-radius: 25px;
     font-size: 16px;
     background: #f8f9fa;
     outline: none;
+}
+
+#searchInput:focus {
+    border-color: #065fd4;
+}
+
+#searchButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    color: #606060;
+    padding: 0 15px;
+    transition: 0.2s;
+}
+
+#searchButton:hover {
+    color: #ff0000;
 }
 
 .video-list {
