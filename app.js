@@ -4,7 +4,7 @@ let currentVideoId = null;
 let currentQuery = '';
 let nextPageToken = '';
 
-// Инициализация плеера
+// Инициализация плеера YouTube
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '200',
@@ -22,6 +22,7 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
+// Обработчики плеера
 function onPlayerReady(event) {
     console.log('Плеер готов к работе');
 }
@@ -48,30 +49,23 @@ async function loadPopularVideos() {
     }
 }
 
-// Поиск видео
+// Основная функция поиска
 async function searchVideos(query) {
-    currentQuery = query.trim();
-    nextPageToken = '';
+    if (!query) return loadPopularVideos();
     
-    if (!currentQuery) {
-        loadPopularVideos();
-        return;
-    }
-
     showLoader();
-    hideError();
-    
+    currentQuery = query;
+    nextPageToken = '';
+
     try {
         const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(currentQuery)}&key=${YT_API_KEY}&type=video`
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${YT_API_KEY}&type=video`
         );
         
         if (!response.ok) throw new Error(`Ошибка: ${response.status}`);
         
         const data = await response.json();
         nextPageToken = data.nextPageToken || '';
-        if (!data.items || data.items.length === 0) throw new Error('Видео не найдены');
-        
         renderVideos(data.items);
     } catch (error) {
         showError(error.message);
@@ -106,7 +100,7 @@ function renderVideos(videos) {
     addVideoClickHandlers();
 }
 
-// Загрузка дополнительных видео
+// Пагинация
 async function loadMoreVideos() {
     if (!nextPageToken || !currentQuery) return;
 
@@ -125,7 +119,7 @@ async function loadMoreVideos() {
     }
 }
 
-// Добавление видео к списку
+// Добавление новых видео
 function appendVideos(videos) {
     const list = document.getElementById('videoList');
     list.innerHTML += videos.map(video => `
@@ -158,7 +152,7 @@ function formatDate(publishedAt) {
     });
 }
 
-// Обработчики событий
+// Обработчики кликов
 function addVideoClickHandlers() {
     document.querySelectorAll('.video-item').forEach(item => {
         item.addEventListener('click', () => {
@@ -168,6 +162,7 @@ function addVideoClickHandlers() {
     });
 }
 
+// Воспроизведение видео
 function playVideo(videoId) {
     if (currentVideoId === videoId) {
         player.playVideo();
@@ -201,17 +196,27 @@ function showError(message) {
     document.getElementById('errorMessage').textContent = message;
 }
 
-function hideError() {
-    document.getElementById('errorMessage').textContent = '';
-}
+// Обработчики событий
+document.getElementById('searchButton').addEventListener('click', () => {
+    const query = document.getElementById('searchInput').value.trim();
+    searchVideos(query);
+});
 
-// Обработчики
+document.getElementById('searchInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        const query = e.target.value.trim();
+        searchVideos(query);
+        e.target.blur();
+    }
+});
+
+let searchTimer;
 document.getElementById('searchInput').addEventListener('input', (e) => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
-        searchVideos(e.target.value.trim());
-        e.target.blur(); // Скрыть клавиатуру
-    }, 500);
+        const query = e.target.value.trim();
+        if (query) searchVideos(query);
+    }, 800);
 });
 
 window.addEventListener('scroll', () => {
@@ -220,7 +225,7 @@ window.addEventListener('scroll', () => {
     }
 });
 
-// Инициализация при загрузке
+// Инициализация
 window.addEventListener('DOMContentLoaded', () => {
     loadPopularVideos();
 });
