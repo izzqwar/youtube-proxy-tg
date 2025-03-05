@@ -1,7 +1,10 @@
 const YT_API_KEY = 'AIzaSyCCOqb3-LZZSfzHESrMIBAZhmlY3MFVkmc';
 let player;
 let currentVideoId = null;
+let currentQuery = '';
+let nextPageToken = '';
 
+// Инициализация плеера
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '200',
@@ -29,9 +32,29 @@ function onPlayerStateChange(event) {
     }
 }
 
+// Загрузка популярных видео
+async function loadPopularVideos() {
+    showLoader();
+    try {
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=20&regionCode=RU&key=${YT_API_KEY}`
+        );
+        const data = await response.json();
+        renderVideos(data.items);
+    } catch (error) {
+        showError('Ошибка загрузки рекомендаций');
+    } finally {
+        hideLoader();
+    }
+}
+
+// Поиск видео
 async function searchVideos(query) {
-    if (!query || query.trim().length < 2) {
-        clearResults();
+    currentQuery = query.trim();
+    nextPageToken = '';
+    
+    if (!currentQuery) {
+        loadPopularVideos();
         return;
     }
 
@@ -40,12 +63,13 @@ async function searchVideos(query) {
     
     try {
         const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${YT_API_KEY}&type=video`
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(currentQuery)}&key=${YT_API_KEY}&type=video`
         );
         
         if (!response.ok) throw new Error(`Ошибка: ${response.status}`);
         
         const data = await response.json();
+        nextPageToken = data.nextPageToken || '';
         if (!data.items || data.items.length === 0) throw new Error('Видео не найдены');
         
         renderVideos(data.items);
@@ -56,9 +80,55 @@ async function searchVideos(query) {
     }
 }
 
+// Отрисовка видео
 function renderVideos(videos) {
     const list = document.getElementById('videoList');
-    list.innerHTML = videos.map(video => `
+    list.innerHTML = videos.map(video => {
+        const videoId = video.id.videoId || video.id;
+        return `
+            <div class="video-item" data-id="${videoId}">
+                <img 
+                    src="${video.snippet.thumbnails.medium.url}" 
+                    class="thumbnail" 
+                    alt="${video.snippet.title}"
+                >
+                <div class="details">
+                    <div class="title">${video.snippet.title}</div>
+                    <div class="channel">${video.snippet.channelTitle}</div>
+                    <div class="metadata">
+                        ${formatDate(video.snippet.publishedAt)}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    addVideoClickHandlers();
+}
+
+// Загрузка дополнительных видео
+async function loadMoreVideos() {
+    if (!nextPageToken || !currentQuery) return;
+
+    showLoader();
+    try {
+        const response = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?pageToken=${nextPageToken}&part=snippet&maxResults=10&q=${encodeURIComponent(currentQuery)}&key=${YT_API_KEY}&type=video`
+        );
+        const data = await response.json();
+        nextPageToken = data.nextPageToken || '';
+        appendVideos(data.items);
+    } catch (error) {
+        showError('Ошибка загрузки');
+    } finally {
+        hideLoader();
+    }
+}
+
+// Добавление видео к списку
+function appendVideos(videos) {
+    const list = document.getElementById('videoList');
+    list.innerHTML += videos.map(video => `
         <div class="video-item" data-id="${video.id.videoId}">
             <img 
                 src="${video.snippet.thumbnails.medium.url}" 
@@ -75,6 +145,21 @@ function renderVideos(videos) {
         </div>
     `).join('');
 
+    addVideoClickHandlers();
+}
+
+// Форматирование даты
+function formatDate(publishedAt) {
+    const date = new Date(publishedAt);
+    return date.toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
+
+// Обработчики событий
+function addVideoClickHandlers() {
     document.querySelectorAll('.video-item').forEach(item => {
         item.addEventListener('click', () => {
             const videoId = item.dataset.id;
@@ -95,15 +180,7 @@ function playVideo(videoId) {
     showPlayer();
 }
 
-function formatDate(publishedAt) {
-    const date = new Date(publishedAt);
-    return date.toLocaleDateString('ru-RU', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-}
-
+// Управление UI
 function showPlayer() {
     document.getElementById('playerContainer').style.transform = 'translateY(0)';
 }
@@ -128,13 +205,22 @@ function hideError() {
     document.getElementById('errorMessage').textContent = '';
 }
 
-function clearResults() {
-    document.getElementById('videoList').innerHTML = '';
-}
-
-// Обработчик поиска
-let searchTimer;
+// Обработчики
 document.getElementById('searchInput').addEventListener('input', (e) => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => searchVideos(e.target.value.trim()), 500);
+    searchTimer = setTimeout(() => {
+        searchVideos(e.target.value.trim());
+        e.target.blur(); // Скрыть клавиатуру
+    }, 500);
+});
+
+window.addEventListener('scroll', () => {
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+        loadMoreVideos();
+    }
+});
+
+// Инициализация при загрузке
+window.addEventListener('DOMContentLoaded', () => {
+    loadPopularVideos();
 });
