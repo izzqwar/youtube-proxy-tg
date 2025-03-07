@@ -8,7 +8,7 @@ let nextPageToken = '';
 let commentsPageToken = '';
 let currentVideoData = null;
 
-// Инициализация темы
+// Theme Management
 function initTheme() {
     const savedTheme = localStorage.getItem(STORAGE_KEY);
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -22,7 +22,7 @@ function setTheme(theme) {
     localStorage.setItem(STORAGE_KEY, theme);
 }
 
-// Инициализация плеера
+// YouTube Player
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '200',
@@ -54,7 +54,7 @@ function handleSearch() {
     searchVideos(query);
 }
 
-// Загрузка контента
+// Video Loading
 async function loadPopularVideos() {
     showLoader();
     try {
@@ -89,7 +89,7 @@ async function searchVideos(query) {
     }
 }
 
-// Отображение видео
+// Video Display
 function renderVideos(videos) {
     const list = document.getElementById('videoList');
     list.innerHTML = videos.map(video => `
@@ -105,17 +105,20 @@ function renderVideos(videos) {
     addVideoClickHandlers();
 }
 
-// Страница видео
+// Video Page
 function playVideo(videoId) {
     if (player) player.stopVideo();
     if (videoPagePlayer) videoPagePlayer.destroy();
     
     document.querySelector('.container').style.display = 'none';
     document.getElementById('videoPage').style.display = 'block';
+    window.scrollTo(0, 0);
     
-    loadVideoDetails(videoId);
-    loadComments(videoId);
-    loadRecommendations(videoId);
+    loadVideoDetails(videoId)
+        .then(() => {
+            loadComments(videoId);
+            loadRecommendations(videoId);
+        });
 }
 
 async function loadVideoDetails(videoId) {
@@ -135,12 +138,10 @@ function renderVideoDetails() {
     const {snippet, statistics} = currentVideoData;
     const descContainer = document.querySelector('.description-container');
     
-    // Основная информация
     document.querySelector('.video-title').textContent = snippet.title;
     document.querySelector('.views-count').textContent = `${Number(statistics.viewCount).toLocaleString()} просмотров`;
     document.querySelector('.channel-name').textContent = snippet.channelTitle;
     
-    // Описание со сворачиванием
     descContainer.innerHTML = `
         <div class="short-description">${truncateText(snippet.description, 150)}</div>
         <button class="show-more-btn">Ещё</button>
@@ -153,7 +154,6 @@ function renderVideoDetails() {
         this.remove();
     });
 
-    // Инициализация плеера
     const playerContainer = document.getElementById('videoPlayer');
     playerContainer.innerHTML = '';
     videoPagePlayer = new YT.Player('videoPlayer', {
@@ -166,7 +166,7 @@ function renderVideoDetails() {
     });
 }
 
-// Комментарии
+// Comments
 async function loadComments(videoId) {
     try {
         const response = await fetch(
@@ -210,7 +210,7 @@ function renderComments(comments) {
     });
 }
 
-// Рекомендации
+// Recommendations
 async function loadRecommendations(videoId) {
     try {
         const response = await fetch(
@@ -219,7 +219,7 @@ async function loadRecommendations(videoId) {
         const data = await response.json();
         renderRecommendations(data.items);
     } catch (error) {
-        console.error('Ошибка рекомендаций:', error);
+        // Ошибка рекомендаций не критична
     }
 }
 
@@ -234,7 +234,7 @@ function renderRecommendations(videos) {
     addVideoClickHandlers();
 }
 
-// Вспомогательные функции
+// Utils
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('ru-RU', {
@@ -250,7 +250,11 @@ function truncateText(text, maxLength) {
 
 function addVideoClickHandlers() {
     document.querySelectorAll('.video-item').forEach(item => {
-        item.addEventListener('click', () => playVideo(item.dataset.id));
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const videoId = this.dataset.id;
+            if (videoId) playVideo(videoId);
+        });
     });
 }
 
@@ -268,7 +272,7 @@ function showError(message) {
     setTimeout(() => errorElement.textContent = '', 3000);
 }
 
-// Инициализация
+// Init
 document.getElementById('themeToggle').addEventListener('click', () => {
     setTheme(document.body.classList.contains('dark-theme') ? 'light' : 'dark');
 });
