@@ -8,7 +8,7 @@ let nextPageToken = '';
 let commentsPageToken = '';
 let currentVideoData = null;
 
-// Theme Management
+// Инициализация темы
 function initTheme() {
     const savedTheme = localStorage.getItem(STORAGE_KEY);
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -22,7 +22,7 @@ function setTheme(theme) {
     localStorage.setItem(STORAGE_KEY, theme);
 }
 
-// YouTube Player Initialization
+// Инициализация плеера
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '200',
@@ -32,26 +32,29 @@ function onYouTubeIframeAPIReady() {
             'controls': 1,
             'modestbranding': 1,
             'rel': 0
-        },
-        events: {
-            'onReady': onPlayerReady,
-            'onStateChange': onPlayerStateChange
         }
     });
 }
 
-// Player Event Handlers
-function onPlayerReady(event) {
-    console.log('Main player ready');
+// Поиск видео
+document.getElementById('searchButton').addEventListener('click', handleSearch);
+document.getElementById('searchInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleSearch();
+});
+
+function handleSearch() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+    
+    document.getElementById('videoList').classList.add('search-animation');
+    setTimeout(() => {
+        document.getElementById('videoList').classList.remove('search-animation');
+    }, 500);
+    
+    searchVideos(query);
 }
 
-function onPlayerStateChange(event) {
-    if (event.data === YT.PlayerState.ENDED) {
-        document.getElementById('playerContainer').style.transform = 'translateY(100%)';
-    }
-}
-
-// Video Loading Functions
+// Загрузка контента
 async function loadPopularVideos() {
     showLoader();
     try {
@@ -61,15 +64,13 @@ async function loadPopularVideos() {
         const data = await response.json();
         renderVideos(data.items);
     } catch (error) {
-        showError('Error loading videos');
+        showError('Ошибка загрузки');
     } finally {
         hideLoader();
     }
 }
 
 async function searchVideos(query) {
-    if (!query) return loadPopularVideos();
-    
     showLoader();
     currentQuery = query;
     nextPageToken = '';
@@ -88,7 +89,7 @@ async function searchVideos(query) {
     }
 }
 
-// Video Display Functions
+// Отображение видео
 function renderVideos(videos) {
     const list = document.getElementById('videoList');
     list.innerHTML = videos.map(video => `
@@ -97,16 +98,14 @@ function renderVideos(videos) {
             <div class="details">
                 <div class="title">${video.snippet.title}</div>
                 <div class="channel">${video.snippet.channelTitle}</div>
-                <div class="metadata">
-                    ${new Date(video.snippet.publishedAt).toLocaleDateString('ru-RU')}
-                </div>
+                <div class="date">${formatDate(video.snippet.publishedAt)}</div>
             </div>
         </div>
     `).join('');
     addVideoClickHandlers();
 }
 
-// Video Page Functions
+// Страница видео
 function playVideo(videoId) {
     if (player) player.stopVideo();
     if (videoPagePlayer) videoPagePlayer.destroy();
@@ -128,22 +127,35 @@ async function loadVideoDetails(videoId) {
         currentVideoData = data.items[0];
         renderVideoDetails();
     } catch (error) {
-        showError('Failed to load video details');
+        showError('Ошибка загрузки видео');
     }
 }
 
 function renderVideoDetails() {
     const {snippet, statistics} = currentVideoData;
+    const descContainer = document.querySelector('.description-container');
     
+    // Основная информация
     document.querySelector('.video-title').textContent = snippet.title;
-    document.querySelector('.views-count').textContent = `${Number(statistics.viewCount).toLocaleString()} views`;
-    document.querySelector('.likes-count').textContent = `${Number(statistics.likeCount).toLocaleString()} likes`;
+    document.querySelector('.views-count').textContent = `${Number(statistics.viewCount).toLocaleString()} просмотров`;
     document.querySelector('.channel-name').textContent = snippet.channelTitle;
-    document.querySelector('.description').textContent = snippet.description;
+    
+    // Описание со сворачиванием
+    descContainer.innerHTML = `
+        <div class="short-description">${truncateText(snippet.description, 150)}</div>
+        <button class="show-more-btn">Ещё</button>
+        <div class="full-description">${snippet.description}</div>
+    `;
 
+    document.querySelector('.show-more-btn').addEventListener('click', function() {
+        this.previousElementSibling.style.display = 'none';
+        this.nextElementSibling.style.display = 'block';
+        this.remove();
+    });
+
+    // Инициализация плеера
     const playerContainer = document.getElementById('videoPlayer');
     playerContainer.innerHTML = '';
-    
     videoPagePlayer = new YT.Player('videoPlayer', {
         videoId: currentVideoData.id,
         playerVars: {
@@ -154,7 +166,7 @@ function renderVideoDetails() {
     });
 }
 
-// Comment System
+// Комментарии
 async function loadComments(videoId) {
     try {
         const response = await fetch(
@@ -163,24 +175,42 @@ async function loadComments(videoId) {
         const data = await response.json();
         renderComments(data.items);
     } catch (error) {
-        showError('Comments disabled');
+        showError('Комментарии отключены');
     }
 }
 
 function renderComments(comments) {
     const container = document.querySelector('.comments-list');
-    container.innerHTML = comments.map(comment => `
-        <div class="comment">
-            <img src="${comment.snippet.topLevelComment.snippet.authorProfileImageUrl}">
-            <div>
-                <div class="comment-author">${comment.snippet.topLevelComment.snippet.authorDisplayName}</div>
-                <div class="comment-text">${comment.snippet.topLevelComment.snippet.textDisplay}</div>
-            </div>
+    container.innerHTML = `
+        <div class="comments-preview">
+            ${comments.slice(0, 2).map(comment => `
+                <div class="comment">
+                    <img src="${comment.snippet.topLevelComment.snippet.authorProfileImageUrl}">
+                    <div class="comment-text">${truncateText(comment.snippet.topLevelComment.snippet.textDisplay, 100)}</div>
+                </div>
+            `).join('')}
         </div>
-    `).join('');
+        <button class="show-comments-btn">Показать все комментарии</button>
+        <div class="all-comments" style="display:none">
+            ${comments.map(comment => `
+                <div class="comment">
+                    <img src="${comment.snippet.topLevelComment.snippet.authorProfileImageUrl}">
+                    <div>
+                        <div class="comment-author">${comment.snippet.topLevelComment.snippet.authorDisplayName}</div>
+                        <div class="comment-text">${comment.snippet.topLevelComment.snippet.textDisplay}</div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+
+    document.querySelector('.show-comments-btn').addEventListener('click', function() {
+        this.nextElementSibling.style.display = 'block';
+        this.remove();
+    });
 }
 
-// Recommendations System
+// Рекомендации
 async function loadRecommendations(videoId) {
     try {
         const response = await fetch(
@@ -189,13 +219,13 @@ async function loadRecommendations(videoId) {
         const data = await response.json();
         renderRecommendations(data.items);
     } catch (error) {
-        showError('Failed to load recommendations');
+        console.error('Ошибка рекомендаций:', error);
     }
 }
 
 function renderRecommendations(videos) {
     const container = document.querySelector('.recommendations-list');
-    container.innerHTML = videos.map(video => `
+    container.innerHTML = videos.slice(0, 4).map(video => `
         <div class="video-item" data-id="${video.id.videoId}">
             <img src="${video.snippet.thumbnails.medium.url}" class="thumbnail">
             <div class="title">${video.snippet.title}</div>
@@ -204,22 +234,20 @@ function renderRecommendations(videos) {
     addVideoClickHandlers();
 }
 
-// Event Handlers
-document.getElementById('themeToggle').addEventListener('click', () => {
-    setTheme(document.body.classList.contains('dark-theme') ? 'light' : 'dark');
-});
+// Вспомогательные функции
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+}
 
-document.getElementById('backButton').addEventListener('click', () => {
-    document.querySelector('.container').style.display = 'block';
-    document.getElementById('videoPage').style.display = 'none';
-    if (videoPagePlayer) videoPagePlayer.destroy();
-});
+function truncateText(text, maxLength) {
+    return text.length > maxLength ? text.slice(0, maxLength) + '...' : text;
+}
 
-document.getElementById('loadMoreComments').addEventListener('click', () => {
-    loadComments(currentVideoData.id);
-});
-
-// Utility Functions
 function addVideoClickHandlers() {
     document.querySelectorAll('.video-item').forEach(item => {
         item.addEventListener('click', () => playVideo(item.dataset.id));
@@ -235,13 +263,22 @@ function hideLoader() {
 }
 
 function showError(message) {
-    document.getElementById('errorMessage').textContent = message;
-    setTimeout(() => {
-        document.getElementById('errorMessage').textContent = '';
-    }, 3000);
+    const errorElement = document.getElementById('errorMessage');
+    errorElement.textContent = message;
+    setTimeout(() => errorElement.textContent = '', 3000);
 }
 
-// Initialization
+// Инициализация
+document.getElementById('themeToggle').addEventListener('click', () => {
+    setTheme(document.body.classList.contains('dark-theme') ? 'light' : 'dark');
+});
+
+document.getElementById('backButton').addEventListener('click', () => {
+    document.querySelector('.container').style.display = 'block';
+    document.getElementById('videoPage').style.display = 'none';
+    if (videoPagePlayer) videoPagePlayer.destroy();
+});
+
 window.addEventListener('DOMContentLoaded', () => {
     initTheme();
     loadPopularVideos();
