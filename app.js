@@ -1,13 +1,14 @@
 const YT_API_KEY = 'AIzaSyCCOqb3-LZZSfzHESrMIBAZhmlY3MFVkmc';
 const STORAGE_KEY = 'yt-theme';
 let player;
+let videoPagePlayer = null;
 let currentVideoId = null;
 let currentQuery = '';
 let nextPageToken = '';
 let commentsPageToken = '';
 let currentVideoData = null;
 
-// Theme Manager
+// Theme Management
 function initTheme() {
     const savedTheme = localStorage.getItem(STORAGE_KEY);
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -17,11 +18,11 @@ function initTheme() {
 
 function setTheme(theme) {
     document.body.classList.toggle('dark-theme', theme === 'dark');
-    themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
     localStorage.setItem(STORAGE_KEY, theme);
 }
 
-// YouTube Player
+// YouTube Player Initialization
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '200',
@@ -39,27 +40,28 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
+// Player Event Handlers
 function onPlayerReady(event) {
-    console.log('Плеер готов к работе');
+    console.log('Main player ready');
 }
 
 function onPlayerStateChange(event) {
     if (event.data === YT.PlayerState.ENDED) {
-        hidePlayer();
+        document.getElementById('playerContainer').style.transform = 'translateY(100%)';
     }
 }
 
-// Video Functions
+// Video Loading Functions
 async function loadPopularVideos() {
     showLoader();
     try {
         const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=20&regionCode=RU&key=${YT_API_KEY}`
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=20&key=${YT_API_KEY}`
         );
         const data = await response.json();
         renderVideos(data.items);
     } catch (error) {
-        showError('Ошибка загрузки рекомендаций');
+        showError('Error loading videos');
     } finally {
         hideLoader();
     }
@@ -74,11 +76,8 @@ async function searchVideos(query) {
 
     try {
         const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${YT_API_KEY}&type=video`
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&key=${YT_API_KEY}`
         );
-        
-        if (!response.ok) throw new Error(`Ошибка: ${response.status}`);
-        
         const data = await response.json();
         nextPageToken = data.nextPageToken || '';
         renderVideos(data.items);
@@ -89,34 +88,32 @@ async function searchVideos(query) {
     }
 }
 
+// Video Display Functions
 function renderVideos(videos) {
     const list = document.getElementById('videoList');
-    list.innerHTML = videos.map(video => {
-        const videoId = video.id.videoId || video.id;
-        return `
-            <div class="video-item" data-id="${videoId}">
-                <img 
-                    src="${video.snippet.thumbnails.medium.url}" 
-                    class="thumbnail" 
-                    alt="${video.snippet.title}"
-                >
-                <div class="details">
-                    <div class="title">${video.snippet.title}</div>
-                    <div class="channel">${video.snippet.channelTitle}</div>
-                    <div class="metadata">
-                        ${formatDate(video.snippet.publishedAt)}
-                    </div>
+    list.innerHTML = videos.map(video => `
+        <div class="video-item" data-id="${video.id.videoId || video.id}">
+            <img src="${video.snippet.thumbnails.medium.url}" class="thumbnail">
+            <div class="details">
+                <div class="title">${video.snippet.title}</div>
+                <div class="channel">${video.snippet.channelTitle}</div>
+                <div class="metadata">
+                    ${new Date(video.snippet.publishedAt).toLocaleDateString('ru-RU')}
                 </div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `).join('');
     addVideoClickHandlers();
 }
 
-// Video Page
+// Video Page Functions
 function playVideo(videoId) {
+    if (player) player.stopVideo();
+    if (videoPagePlayer) videoPagePlayer.destroy();
+    
     document.querySelector('.container').style.display = 'none';
     document.getElementById('videoPage').style.display = 'block';
+    
     loadVideoDetails(videoId);
     loadComments(videoId);
     loadRecommendations(videoId);
@@ -131,26 +128,23 @@ async function loadVideoDetails(videoId) {
         currentVideoData = data.items[0];
         renderVideoDetails();
     } catch (error) {
-        showError('Не удалось загрузить информацию о видео');
+        showError('Failed to load video details');
     }
 }
 
 function renderVideoDetails() {
-    const snippet = currentVideoData.snippet;
-    const stats = currentVideoData.statistics;
-
+    const {snippet, statistics} = currentVideoData;
+    
     document.querySelector('.video-title').textContent = snippet.title;
-    document.querySelector('.views-count').textContent = `${Number(stats.viewCount).toLocaleString()} просмотров`;
-    document.querySelector('.likes-count').textContent = `${Number(stats.likeCount).toLocaleString()} лайков`;
-    document.querySelector('.date').textContent = formatDate(snippet.publishedAt);
+    document.querySelector('.views-count').textContent = `${Number(statistics.viewCount).toLocaleString()} views`;
+    document.querySelector('.likes-count').textContent = `${Number(statistics.likeCount).toLocaleString()} likes`;
     document.querySelector('.channel-name').textContent = snippet.channelTitle;
-    document.querySelector('.subscribers-count').textContent = 'Подписчиков: ' + (stats.subscriberCount || 'N/A');
     document.querySelector('.description').textContent = snippet.description;
-    document.querySelector('.channel-thumb').src = snippet.thumbnails.default.url;
 
-    new YT.Player('videoPlayer', {
-        height: '100%',
-        width: '100%',
+    const playerContainer = document.getElementById('videoPlayer');
+    playerContainer.innerHTML = '';
+    
+    videoPagePlayer = new YT.Player('videoPlayer', {
         videoId: currentVideoData.id,
         playerVars: {
             autoplay: 1,
@@ -160,46 +154,42 @@ function renderVideoDetails() {
     });
 }
 
-// Comments
+// Comment System
 async function loadComments(videoId) {
     try {
         const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&key=${YT_API_KEY}&maxResults=20&pageToken=${commentsPageToken}`
+            `https://www.googleapis.com/youtube/v3/commentThreads?part=snippet&videoId=${videoId}&key=${YT_API_KEY}`
         );
         const data = await response.json();
-        commentsPageToken = data.nextPageToken || '';
         renderComments(data.items);
     } catch (error) {
-        showError('Не удалось загрузить комментарии');
+        showError('Comments disabled');
     }
 }
 
 function renderComments(comments) {
     const container = document.querySelector('.comments-list');
-    container.innerHTML += comments.map(comment => {
-        const snippet = comment.snippet.topLevelComment.snippet;
-        return `
-            <div class="comment">
-                <img src="${snippet.authorProfileImageUrl}" class="channel-thumb" alt="Автор">
-                <div>
-                    <div class="comment-author">${snippet.authorDisplayName}</div>
-                    <div class="comment-text">${snippet.textDisplay}</div>
-                </div>
+    container.innerHTML = comments.map(comment => `
+        <div class="comment">
+            <img src="${comment.snippet.topLevelComment.snippet.authorProfileImageUrl}">
+            <div>
+                <div class="comment-author">${comment.snippet.topLevelComment.snippet.authorDisplayName}</div>
+                <div class="comment-text">${comment.snippet.topLevelComment.snippet.textDisplay}</div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `).join('');
 }
 
-// Recommendations
+// Recommendations System
 async function loadRecommendations(videoId) {
     try {
         const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&relatedToVideoId=${videoId}&key=${YT_API_KEY}&maxResults=5`
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&relatedToVideoId=${videoId}&type=video&key=${YT_API_KEY}`
         );
         const data = await response.json();
         renderRecommendations(data.items);
     } catch (error) {
-        showError('Не удалось загрузить рекомендации');
+        showError('Failed to load recommendations');
     }
 }
 
@@ -208,40 +198,32 @@ function renderRecommendations(videos) {
     container.innerHTML = videos.map(video => `
         <div class="video-item" data-id="${video.id.videoId}">
             <img src="${video.snippet.thumbnails.medium.url}" class="thumbnail">
-            <div class="details">
-                <div class="title">${video.snippet.title}</div>
-            </div>
+            <div class="title">${video.snippet.title}</div>
         </div>
     `).join('');
     addVideoClickHandlers();
 }
 
-// Helpers
-function formatDate(publishedAt) {
-    const date = new Date(publishedAt);
-    return date.toLocaleDateString('ru-RU', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-}
+// Event Handlers
+document.getElementById('themeToggle').addEventListener('click', () => {
+    setTheme(document.body.classList.contains('dark-theme') ? 'light' : 'dark');
+});
 
+document.getElementById('backButton').addEventListener('click', () => {
+    document.querySelector('.container').style.display = 'block';
+    document.getElementById('videoPage').style.display = 'none';
+    if (videoPagePlayer) videoPagePlayer.destroy();
+});
+
+document.getElementById('loadMoreComments').addEventListener('click', () => {
+    loadComments(currentVideoData.id);
+});
+
+// Utility Functions
 function addVideoClickHandlers() {
     document.querySelectorAll('.video-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const videoId = item.dataset.id;
-            playVideo(videoId);
-        });
+        item.addEventListener('click', () => playVideo(item.dataset.id));
     });
-}
-
-// UI Controls
-function showPlayer() {
-    document.getElementById('playerContainer').style.transform = 'translateY(0)';
-}
-
-function hidePlayer() {
-    document.getElementById('playerContainer').style.transform = 'translateY(100%)';
 }
 
 function showLoader() {
@@ -254,123 +236,13 @@ function hideLoader() {
 
 function showError(message) {
     document.getElementById('errorMessage').textContent = message;
+    setTimeout(() => {
+        document.getElementById('errorMessage').textContent = '';
+    }, 3000);
 }
 
-// Event Listeners
-document.getElementById('searchButton').addEventListener('click', () => {
-    const query = document.getElementById('searchInput').value.trim();
-    searchVideos(query);
-});
-
-document.getElementById('searchInput').addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        const query = e.target.value.trim();
-        searchVideos(query);
-        e.target.blur();
-    }
-});
-
-document.getElementById('themeToggle').addEventListener('click', () => {
-    const isDark = document.body.classList.contains('dark-theme');
-    setTheme(isDark ? 'light' : 'dark');
-});
-
-document.getElementById('backButton').addEventListener('click', () => {
-    document.querySelector('.container').style.display = 'block';
-    document.getElementById('videoPage').style.display = 'none';
-    hidePlayer();
-});
-
-document.getElementById('loadMoreComments').addEventListener('click', () => {
-    loadComments(currentVideoData.id);
-});
-
-let searchTimer;
-document.getElementById('searchInput').addEventListener('input', (e) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-        const query = e.target.value.trim();
-        if (query) searchVideos(query);
-    }, 800);
-});
-
-// Пагинация при скролле
-window.addEventListener('scroll', () => {
-    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
-        loadMoreVideos();
-    }
-});
-
-// Инициализация приложения
+// Initialization
 window.addEventListener('DOMContentLoaded', () => {
     initTheme();
     loadPopularVideos();
 });
-
-// Функция пагинации
-async function loadMoreVideos() {
-    if (!nextPageToken || !currentQuery) return;
-
-    showLoader();
-    try {
-        const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/search?pageToken=${nextPageToken}&part=snippet&maxResults=10&q=${encodeURIComponent(currentQuery)}&key=${YT_API_KEY}&type=video`
-        );
-        const data = await response.json();
-        nextPageToken = data.nextPageToken || '';
-        appendVideos(data.items);
-    } catch (error) {
-        showError('Ошибка загрузки');
-    } finally {
-        hideLoader();
-    }
-}
-
-// Добавление новых видео
-function appendVideos(videos) {
-    const list = document.getElementById('videoList');
-    list.innerHTML += videos.map(video => `
-        <div class="video-item" data-id="${video.id.videoId}">
-            <img 
-                src="${video.snippet.thumbnails.medium.url}" 
-                class="thumbnail" 
-                alt="${video.snippet.title}"
-            >
-            <div class="details">
-                <div class="title">${video.snippet.title}</div>
-                <div class="channel">${video.snippet.channelTitle}</div>
-                <div class="metadata">
-                    ${formatDate(video.snippet.publishedAt)}
-                </div>
-            </div>
-        </div>
-    `).join('');
-    addVideoClickHandlers();
-}
-
-// Валидация API-ответов
-function validateResponse(response) {
-    if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
-}
-
-// Обработка ошибок YouTube API
-function handleYouTubeError(error) {
-    console.error('YouTube API Error:', error);
-    showError(error.message.includes('quota') 
-        ? 'Превышена квота API' 
-        : 'Ошибка соединения с YouTube');
-}
-
-// Деструктуризация данных видео
-function parseVideoData(items) {
-    return items.map(item => ({
-        id: item.id.videoId || item.id,
-        title: item.snippet.title,
-        channel: item.snippet.channelTitle,
-        thumbnail: item.snippet.thumbnails.medium.url,
-        publishedAt: item.snippet.publishedAt
-    }));
-}
