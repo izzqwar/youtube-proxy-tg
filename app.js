@@ -3,6 +3,21 @@ let player;
 let currentVideoId = null;
 let currentQuery = '';
 let nextPageToken = '';
+const STORAGE_KEY = 'yt-theme';
+
+// Инициализация темы
+function initTheme() {
+    const savedTheme = localStorage.getItem(STORAGE_KEY);
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = savedTheme || (systemDark ? 'dark' : 'light');
+    setTheme(theme);
+}
+
+function setTheme(theme) {
+    document.body.classList.toggle('dark-theme', theme === 'dark');
+    themeToggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem(STORAGE_KEY, theme);
+}
 
 // Инициализация плеера YouTube
 function onYouTubeIframeAPIReady() {
@@ -210,6 +225,11 @@ document.getElementById('searchInput').addEventListener('keypress', (e) => {
     }
 });
 
+document.getElementById('themeToggle').addEventListener('click', () => {
+    const isDark = document.body.classList.contains('dark-theme');
+    setTheme(isDark ? 'light' : 'dark');
+});
+
 let searchTimer;
 document.getElementById('searchInput').addEventListener('input', (e) => {
     clearTimeout(searchTimer);
@@ -227,5 +247,6 @@ window.addEventListener('scroll', () => {
 
 // Инициализация
 window.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     loadPopularVideos();
 });
