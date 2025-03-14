@@ -13,10 +13,10 @@
                 <input 
                     type="search" 
                     id="searchInput" 
-                    placeholder="Поиск видео на YouTube..."
+                    placeholder="Поиск видео..."
                     autocomplete="off"
                 >
-                <button id="searchButton">⚲</button>
+                <button id="searchButton">🔍</button>
             </div>
             <button id="themeToggle" class="theme-btn">🌙</button>
         </div>
@@ -29,42 +29,7 @@
         <div class="error-message" id="errorMessage"></div>
     </div>
 
-    <div id="videoPage" class="video-page">
-        <button id="backButton" class="back-btn">← Назад</button>
-        <div class="video-container">
-            <div id="videoPlayer"></div>
-        </div>
-        
-        <div class="video-info">
-            <h1 class="video-title"></h1>
-            <div class="video-stats">
-                <span class="views-count"></span>
-                <span class="likes-count"></span>
-                <span class="date"></span>
-            </div>
-            <div class="channel-info">
-                <img class="channel-thumb" alt="Channel thumbnail">
-                <div class="channel-details">
-                    <div class="channel-name"></div>
-                    <div class="subscribers-count"></div>
-                </div>
-            </div>
-            <div class="description"></div>
-        </div>
-
-        <div class="comments-section">
-            <h2>Комментарии</h2>
-            <div class="comments-list"></div>
-            <button id="loadMoreComments" class="load-more">Показать еще</button>
-        </div>
-
-        <div class="recommendations">
-            <h2>Рекомендации</h2>
-            <div class="recommendations-list"></div>
-        </div>
-    </div>
-
     <script src="app.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 </body>
-</html
+</html>
