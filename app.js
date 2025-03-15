@@ -38,14 +38,15 @@ async function handleSearch() {
 function renderVideos(videos) {
     const list = document.getElementById('videoList');
     list.innerHTML = videos.map(video => `
-        <a href="video.html?id=${video.id.videoId}" class="video-item">
+        <div class="video-item" data-id="${video.id.videoId}">
             <img src="${video.snippet.thumbnails.medium.url}" class="thumbnail">
             <div class="details">
                 <div class="title">${video.snippet.title}</div>
                 <div class="channel">${video.snippet.channelTitle}</div>
             </div>
-        </a>
+        </div>
     `).join('');
+    addVideoClickHandlers();
 }
 
 // Инициализация
