@@ -38,15 +38,14 @@ async function handleSearch() {
 function renderVideos(videos) {
     const list = document.getElementById('videoList');
     list.innerHTML = videos.map(video => `
-        <div class="video-item" data-id="${video.id.videoId}">
+        <a href="video.html?id=${video.id.videoId}" class="video-item">
             <img src="${video.snippet.thumbnails.medium.url}" class="thumbnail">
             <div class="details">
                 <div class="title">${video.snippet.title}</div>
                 <div class="channel">${video.snippet.channelTitle}</div>
             </div>
-        </div>
+        </a>
     `).join('');
-    addVideoClickHandlers();
 }
 
 // Инициализация
@@ -56,36 +55,4 @@ document.getElementById('themeToggle').addEventListener('click', () => {
 
 window.addEventListener('DOMContentLoaded', () => {
     initTheme();
-    loadPopularVideos(); // Загрузка популярных видео при старте
 });
-
-// Загрузка популярных видео
-async function loadPopularVideos() {
-    showLoader();
-    try {
-        const response = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=20&key=${YT_API_KEY}`
-        );
-        const data = await response.json();
-        renderVideos(data.items);
-    } catch (error) {
-        showError('Ошибка загрузки рекомендаций');
-    } finally {
-        hideLoader();
-    }
-}
-
-// Утилиты
-function showLoader() {
-    document.getElementById('loader').style.display = 'block';
-}
-
-function hideLoader() {
-    document.getElementById('loader').style.display = 'none';
-}
-
-function showError(message) {
-    const errorElement = document.getElementById('errorMessage');
-    errorElement.textContent = message;
-    setTimeout(() => errorElement.textContent = '', 3000);
-}
