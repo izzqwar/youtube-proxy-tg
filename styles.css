@@ -26,25 +26,27 @@ body {
     background: var(--bg-color);
     color: var(--text-color);
     min-height: 100vh;
+    overflow-x: hidden; /* Убираем возможность сдвига экрана вправо */
 }
 
 .container {
     max-width: 800px;
     margin: 0 auto;
     padding: 20px;
+    width: 100%; /* Ограничиваем ширину контейнера */
 }
 
 .header {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px; /* Уменьшаем отступ между элементами */
     margin-bottom: 25px;
 }
 
 .search-box {
     flex: 1;
     display: flex;
-    gap: 10px;
+    gap: 5px; /* Уменьшаем отступ между полем поиска и кнопкой */
 }
 
 #searchInput {
@@ -68,7 +70,7 @@ body {
     font-size: 24px;
     cursor: pointer;
     color: var(--text-color);
-    padding: 0 15px;
+    padding: 0 10px; /* Уменьшаем отступы */
 }
 
 .theme-btn {
@@ -184,9 +186,9 @@ body {
 
 /* Рекомендации */
 .recommendations {
-    margin-top: 40px;
-    border-top: 1px solid var(--border-color);
+    margin-top: 25px; /* Убираем отступ сверху */
     padding-top: 25px;
+    border-top: none; /* Убираем линию */
 }
 
 .recommendations .video-item {
