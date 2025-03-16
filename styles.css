@@ -135,12 +135,13 @@ body {
 .video-title {
     font-size: 24px;
     margin-bottom: 15px;
+    color: var(--text-color); /* Используем переменную для цвета текста */
 }
 
 .video-stats {
     display: flex;
     gap: 20px;
-    color: #606060;
+    color: var(--text-color); /* Используем переменную для цвета текста */
     margin-bottom: 15px;
 }
 
@@ -163,7 +164,7 @@ body {
 }
 
 .short-description {
-    color: #606060;
+    color: var(--text-color); /* Используем переменную для цвета текста */
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
@@ -171,7 +172,7 @@ body {
 }
 
 .show-more-btn {
-    color: #065fd4;
+    color: var(--text-color); /* Используем переменную для цвета текста */
     background: none;
     border: none;
     cursor: pointer;
@@ -182,6 +183,7 @@ body {
 .full-description {
     display: none;
     white-space: pre-wrap;
+    color: var(--text-color); /* Используем переменную для цвета текста */
 }
 
 /* Рекомендации */
