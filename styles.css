@@ -39,7 +39,7 @@ body {
 .header {
     display: flex;
     align-items: center;
-    gap: 10px; /* Уменьшаем отступ между элементами */
+    gap: 5px; /* Уменьшаем отступ между элементами */
     margin-bottom: 25px;
 }
 
